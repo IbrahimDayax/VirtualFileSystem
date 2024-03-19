@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "libfs.h": "c",
+        "libdisk.h": "c"
+    }
+}
