@@ -31,5 +31,5 @@ LibDisk.o: LibDisk.c LibDisk.h
 
 # Rule to clean up the project directory
 clean:
-	rm -f main *.o
+	rm -f main test *.o
     # rm -f main *.o: Removes the main executable and all object files (*.o)

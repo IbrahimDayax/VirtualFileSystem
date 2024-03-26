@@ -1,112 +1,147 @@
 #include <stdio.h>
-
+#include <stdlib.h>
+#include <string.h>
 #include "LibFS.h"
 
-#define block_size 512
-void 
-usage(char *prog)
-{
-    fprintf(stderr, "usage: %s <disk image file>\n", prog);
+void err(char *prog) {
+    printf("Error: %s <disk fn needed>\n", prog);
     exit(1);
 }
 
-int
-main(int argc, char *argv[])
-{
+void print_menu() {
+    printf("\nMenu:\n");
+    printf("1. Create file\n");
+    printf("2. Create directory\n");
+    printf("3. Open file\n");
+    printf("4. Delete file\n");
+    printf("5. Delete directory\n");
+    printf("6. Exit\n");
+    printf("Enter your choice: ");
+}
+
+int main(int argc, char *argv[]) {
     if (argc != 2) {
-	usage(argv[0]);
+        err(argv[0]);
     }
-    char *path = argv[1];
-    char *buffer;
-    int status,count,size,choice,fd,offset;
-    char filename [16];
-    FS_Boot(path);
-    FS_Sync();
-    printf("Disk Initialized\n");
-    while(1)
-    {	
-		printf("*************************************************************\n");
-	    printf("Please enter your choice\n");
-	    printf("0.Exit\n");
-	    printf("1.File Create\t2.File Open\t3.File Read\t4.File Write\n");
-	    printf("5.File Seek\t6.File Close\t7.File Unlink\n");
-	    printf("8.Dir Create\t9.Dir Read\t10.Dir Unlink\n");
-	    printf("*************************************************************\n\n");
-	    scanf("%d",&choice);
-	    
-	    //Menu selection cases
-	    switch(choice)
-	    {
-		    case 0: //Exit the program
-		    	printf("closing the system\n");
-		    	//unmounting();
-			    exit(0);
 
-		    case 1: //File Create
-		    	printf("Enter the file name to create\n");
-		    	scanf("%s",filename);
-			    File_Create(filename);
-			    break;
+    if (FS_Boot(argv[1]) < 0) {
+        printf("ERROR: can't boot file system from file '%s'\n", argv[1]);
+        return -1;
+    } else {
+        printf("File system booted from file '%s'\n", argv[1]);
+    }
 
-		    case 2: //File Open
-		    	printf("Enter the file name to open\n");
-		    	scanf("%s",filename);
-		    	File_Open(filename);
-		    	break;
+    int choice;
+    char path[256];
+    char buf[1024];
+    int fd;
+    int bytes_read; // Move the declaration of bytes_read outside the switch statement
 
-		    case 3: //File Read
-		    	printf("Enter the file name to read\n");
-		    	scanf("%s",filename);
-		    	File_Read(fd, buffer,size);
-		    	break;
+    do {
+        print_menu();
+        scanf("%d", &choice);
+        getchar(); // Consume newline character
 
-		    case 4: //File Write
-		    	printf("Enter the file name to write\n");
-		    	scanf("%s",filename);
-		    	//store_file_into_Disk(filename);
+        switch (choice) {
+            case 1:
+                printf("Enter file path: ");
+                fgets(path, sizeof(path), stdin);
+                path[strcspn(path, "\n")] = '\0'; // Remove trailing newline character
+                if (File_Create(path) < 0) {
+                    printf("Can't create file\n");
+                } else {
+                    printf("File created successfully\n");
+                }
+                break;
+            case 2:
+                printf("Enter directory path: ");
+                fgets(path, sizeof(path), stdin);
+                path[strcspn(path, "\n")] = '\0'; // Remove trailing newline character
+                if (Dir_Create(path) < 0) {
+                    printf("Can't create directory\n");
+                } else {
+                    printf("Directory created successfully\n");
+                }
+                break;
+            case 3:
+                printf("Enter file path: ");
+                fgets(path, sizeof(path), stdin);
+                path[strcspn(path, "\n")] = '\0'; // Remove trailing newline character
+                fd = File_Open(path);
+                if (fd < 0) {
+                    printf("ERROR: can't open file '%s'\n", path);
+                } else {
+                    printf("File '%s' opened successfully, fd=%d\n", path, fd);
+                    printf("What do you want to do with the file?\n");
+                    printf("1. Write to file\n");
+                    printf("2. Read from file\n");
+                    printf("Enter your choice: ");
+                    int action;
+                    scanf("%d", &action);
+                    getchar(); // Consume newline character
+                    switch (action) {
+                        case 1:
+                            printf("Enter data to write: ");
+                            fgets(buf, sizeof(buf), stdin);
+                            if (File_Write(fd, buf, (int)strlen(buf)) != (int)strlen(buf)) { // Cast the result of strlen() to int
+                                printf("ERROR: can't write data to fd=%d\n", fd);
+                            }
+                            break;
+                        case 2:
+                            printf("Reading from file...\n");
+                            memset(buf, 0, sizeof(buf));
+                            bytes_read = File_Read(fd, buf, sizeof(buf) - 1);
+                            if (bytes_read < 0) {
+                                printf("ERROR: can't read data from fd=%d\n", fd);
+                            } else {
+                                printf("Data read from file: %s\n", buf);
+                            }
+                            break;
+                        default:
+                            printf("Invalid choice\n");
+                    }
+                    printf("Closing file...\n");
+                    if (File_Close(fd) < 0) {
+                        printf("ERROR: can't close file '%s'\n", path);
+                    } else {
+                        printf("File '%s' closed successfully\n", path);
+                    }
+                }
+                break;
+            case 4:
+                printf("Enter file path: ");
+                fgets(path, sizeof(path), stdin);
+                path[strcspn(path, "\n")] = '\0'; // Remove trailing newline character
+                if (File_Unlink(path) < 0) {
+                    printf("ERROR: can't remove file '%s'\n", path);
+                } else {
+                    printf("File '%s' removed successfully\n", path);
+                }
+                break;
+            case 5:
+                printf("Enter directory path: ");
+                fgets(path, sizeof(path), stdin);
+                path[strcspn(path, "\n")] = '\0'; // Remove trailing newline character
+                if (Dir_Unlink(path) < 0) {
+                    printf("ERROR: can't remove directory '%s'\n", path);
+                } else {
+                    printf("Directory '%s' removed successfully\n", path);
+                }
+                break;
+            case 6:
+                break;
+            default:
+                printf("Invalid choice\n");
+        }
+    } while (choice != 6);
 
-		    	//count=File_Write(filename, buffer,size);
-		    	break;
-
-		    case 5: //File Seek
-		    	File_Seek(fd,offset);
-		    	break;
-
-		    case 6: //File Close
-		    	printf("Enter the file name to close\n");
-		    	scanf("%s",filename);
-		    	//File_Close(filename);
-		    	break;
-
-		    case 7: //File Unlink
-		    	printf("Enter the file name to unlink\n");
-		    	scanf("%s",filename);
-		    	status=File_Unlink(filename);
-		    	break;
-
-		    //Directory Operations
-		    case 8: //Dir Create
-		    	printf("Enter the dir path to create\n");
-		    	scanf("%s",path);
-		    	status=Dir_Create(path);
-		    	break;
-
-		    case 9: //Dir Read
-		    	printf("Enter the dir path to read\n");
-		    	scanf("%s",path);
-		    	count=Dir_Read(path,buffer,size);
-		    	break;
-
-		    case 10: //Dir Unlink
-		    	printf("Enter the dir path to unlink\n");
-		    	scanf("%s",path);
-		    	status = Dir_Unlink(path);
-		    	break;
-
-		    default:
-		    	printf("Invalid Choice!!! Try Again\n");
-	    }
+    if (FS_Sync() < 0) {
+        printf("ERROR: can't sync file system to file '%s'\n", argv[1]);
+        return -1;
+    } else {
+        printf("File system sync'd to file '%s'\n", argv[1]);
     }
 
     return 0;
 }
+
