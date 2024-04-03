@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "LibFS.h"
+#include <sys/stat.h>  // Include for fstat
+#include <sys/types.h> // Include for off_t
+
+off_t File_GetSize(int fd);
 
 void err(char *prog) {
     printf("Error: %s <disk fn needed>\n", prog);
@@ -35,7 +39,7 @@ int main(int argc, char *argv[]) {
     char path[256];
     char buf[1024];
     int fd;
-    int bytes_read; // Move the declaration of bytes_read outside the switch statement
+    int bytes_read; // Declare bytes_read variable
 
     do {
         print_menu();
@@ -83,18 +87,29 @@ int main(int argc, char *argv[]) {
                         case 1:
                             printf("Enter data to write: ");
                             fgets(buf, sizeof(buf), stdin);
-                            if (File_Write(fd, buf, (int)strlen(buf)) != (int)strlen(buf)) { // Cast the result of strlen() to int
+                            if (File_Write(fd, buf, strlen(buf)) != strlen(buf)) {
                                 printf("ERROR: can't write data to fd=%d\n", fd);
                             }
                             break;
                         case 2:
                             printf("Reading from file...\n");
-                            memset(buf, 0, sizeof(buf));
-                            bytes_read = File_Read(fd, buf, sizeof(buf) - 1);
-                            if (bytes_read < 0) {
-                                printf("ERROR: can't read data from fd=%d\n", fd);
+                            int file_size = File_GetSize(fd); // Get the size of the file
+                            if (file_size < 0) {
+                                printf("ERROR: can't get file size for fd=%d\n", fd);
                             } else {
-                                printf("Data read from file: %s\n", buf);
+                                char *read_buffer = (char *)malloc(file_size + 1); // Allocate memory for the buffer
+                                if (read_buffer == NULL) {
+                                    printf("ERROR: memory allocation failed\n");
+                                } else {
+                                    memset(read_buffer, 0, file_size + 1); // Initialize the buffer
+                                    bytes_read = File_Read(fd, read_buffer, file_size); // Read data from the file
+                                    if (bytes_read < 0) {
+                                        printf("ERROR: can't read data from fd=%d\n", fd);
+                                    } else {
+                                        printf("Data read from file: %s\n", read_buffer);
+                                    }
+                                    free(read_buffer); // Free the allocated memory
+                                }
                             }
                             break;
                         default:
@@ -145,3 +160,11 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+off_t File_GetSize(int fd) {
+    struct stat st;
+    if (fstat(fd, &st) == -1) {
+        perror("fstat");
+        return -1;
+    }
+    return st.st_size;
+}

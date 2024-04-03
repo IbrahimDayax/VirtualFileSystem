@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "libfs.h": "c",
-        "libdisk.h": "c"
+        "libdisk.h": "c",
+        "string.h": "c"
     }
 }
