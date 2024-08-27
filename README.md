@@ -1,4 +1,4 @@
-# Simple File System Project
+# Virtual File System Project
 
 Implementation of a user-level file system in C, providing a simulated file system environment within an operating system context. This project implements a basic file system in C with functionalities to create, delete, open, and write/read files and directories. The file system is simulated using a file that represents a virtual disk.
 
